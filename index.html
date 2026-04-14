@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Autofinanzierung">
+<title>Autofinanzierungsrechner</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#080810;--surf:#0e0e1a;--card:#111120;--bord:#1d1d2e;
+  --blue:#1a7fe8;--grn:#15803d;--red:#dc2626;--yel:#b45309;
+  --tx:#eaeaf5;--mu:#58587a;--dim:#222234;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bot:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100vh;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',system-ui,sans-serif;-webkit-text-size-adjust:none;overscroll-behavior:none}
+.wrap{max-width:440px;margin:0 auto;padding:0 14px calc(44px + var(--safe-bot))}
+
+/* HEADER */
+.hdr{background:var(--surf);border-bottom:1px solid var(--bord);
+  padding:calc(10px + var(--safe-top)) 16px 12px;position:sticky;top:0;z-index:60}
+.hdr-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.logo{width:32px;height:32px;border:1.5px solid var(--blue);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:7px;font-weight:800;color:var(--blue);letter-spacing:.5px}
+.title{font-size:16px;font-weight:700;line-height:1.1}
+.sub{font-size:9px;color:var(--mu);letter-spacing:.12em;text-transform:uppercase;margin-top:2px}
+.strip{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--bord);border-radius:10px;overflow:hidden}
+.sc{background:var(--card);padding:7px 8px;text-align:center}
+.sl{font-size:8px;color:var(--mu);letter-spacing:.09em;text-transform:uppercase;margin-bottom:2px}
+.sv{font-size:13px;font-weight:700;color:var(--blue)}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--bord);border-radius:14px;padding:18px 16px;margin-top:12px}
+.sh{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.sb{width:3px;height:14px;border-radius:2px;flex-shrink:0}
+.st{font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+
+/* SLIDER */
+.sw{margin-bottom:22px}
+.sw-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.sw-l{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--mu)}
+.sw-v{font-size:21px;font-weight:700}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;outline:none;cursor:pointer;display:block}
+input[type=range]:disabled{cursor:not-allowed;opacity:.35}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:var(--blue);border:2.5px solid #fff;box-shadow:0 2px 10px rgba(26,127,232,.4)}
+input[type=range]:disabled::-webkit-slider-thumb{background:var(--dim);border-color:var(--dim);box-shadow:none}
+.sw-r{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);margin-top:4px}
+.sw-nt{font-size:10px;color:var(--mu);margin-top:3px}
+
+/* SELECT */
+select{width:100%;background:var(--surf);color:var(--tx);border:1px solid var(--bord);
+  border-radius:10px;padding:12px 14px;font-size:13px;font-family:inherit;
+  outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2358587a' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center}
+select option{background:#0e0e1a}
+
+/* TOGGLE */
+.tog{display:flex;background:var(--surf);border-radius:10px;border:1px solid var(--bord);padding:3px;gap:3px;margin-bottom:20px}
+.tog button{flex:1;padding:10px 5px;border-radius:8px;border:none;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit;line-height:1.2}
+.tog button.on{background:var(--blue);color:#fff}
+.tog button:not(.on){background:transparent;color:var(--mu)}
+
+/* QUICK RATE BUTTONS */
+.qb{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:-12px;margin-bottom:20px}
+.qb button{padding:8px 0;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;transition:all .12s;font-family:inherit;border:1px solid var(--bord);background:transparent;color:var(--mu)}
+
+/* BANK GRID */
+.bg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.bb{border-radius:10px;border:1px solid var(--bord);padding:10px 12px;cursor:pointer;transition:all .15s;background:transparent;font-family:inherit;text-align:left}
+.bb.sel{border-color:var(--blue);background:rgba(26,127,232,.1)}
+.bb-name{font-size:12px;font-weight:600;color:var(--tx);display:block;margin-bottom:2px}
+.bb-rate{font-size:16px;font-weight:700;color:var(--blue);display:block}
+.bb-sub{font-size:9px;color:var(--mu);display:block;margin-top:1px}
+
+/* INFO BOX */
+.ib{background:var(--surf);border-radius:10px;border:1px solid var(--bord);padding:11px 13px;font-size:11px;color:var(--mu);line-height:1.75}
+.ib strong{color:var(--tx)}
+
+/* CHIPS */
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;-ms-overflow-style:none;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;padding:5px 10px;border-radius:20px;font-size:10px;font-weight:600;border:1px solid;white-space:nowrap}
+
+/* SYNC BUTTON */
+.sync{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:16px;transition:all .15s}
+.sync.on{background:var(--blue);color:#fff;border:1px solid var(--blue)}
+.sync.off{background:transparent;color:var(--blue);border:1px solid var(--blue)}
+
+/* PROGNOSE BOX */
+.pbox{background:var(--surf);border-radius:12px;border:1px solid var(--bord);padding:14px;margin-top:12px}
+.prow{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--bord)}
+.prow:last-child{border-bottom:none}
+.pk{font-size:11px;color:var(--mu)}
+.pv{font-size:14px;font-weight:700}
+
+/* CHART LEGEND */
+.cleg{display:flex;gap:14px;font-size:10px;color:var(--mu);margin-top:8px;flex-wrap:wrap}
+
+/* OPT SELL */
+.optsell{background:rgba(21,128,61,.07);border:1px solid rgba(21,128,61,.25);border-radius:12px;padding:13px 15px;margin-top:12px}
+
+/* END OVERVIEW */
+.estep{background:var(--card);border-radius:14px;padding:18px;border:1px solid var(--bord)}
+.eop{display:flex;align-items:center;gap:10px;padding:7px 16px}
+.eop-ln{flex:1;height:1px;background:var(--bord)}
+.eop-c{width:32px;height:32px;border-radius:50%;background:var(--card);border:1px solid var(--bord);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--mu);font-weight:700;flex-shrink:0}
+.elbl{font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px}
+.eamt{font-size:36px;font-weight:800;line-height:1;letter-spacing:-.02em}
+.eres{border-radius:14px;padding:22px 18px;position:relative;overflow:hidden}
+.ebar{position:absolute;top:0;left:0;right:0;height:4px}
+
+/* STATS GRID */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.sg{background:var(--card);border-radius:12px;border:1px solid var(--bord);padding:13px 14px}
+.sg-l{font-size:9px;color:var(--mu);letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px;line-height:1.4}
+.sg-v{font-size:17px;font-weight:700}
+
+/* PDF BUTTON */
+.pdf-btn{width:100%;margin-top:16px;padding:16px;border-radius:14px;border:none;
+  background:linear-gradient(135deg,var(--blue),#0a5cb8);color:#fff;
+  font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  box-shadow:0 4px 20px rgba(26,127,232,.3);letter-spacing:.02em}
+.pdf-btn:active{transform:scale(.98)}
+
+/* ══════════════════════════════════
+   PRINT / PDF STYLES
+══════════════════════════════════ */
+@media print{
+  :root{--bg:#fff;--surf:#f8f8f8;--card:#ffffff;--bord:#e0e0e0;
+    --blue:#1a5fb4;--grn:#166534;--red:#991b1b;--yel:#92400e;
+    --tx:#1a1a2e;--mu:#555;--dim:#aaa}
+  html,body{background:#fff!important;color:#1a1a2e!important;font-size:12px}
+  .wrap{max-width:100%!important;padding:0 16px!important}
+  .hdr{position:static!important;background:#fff!important;border-bottom:2px solid #1a5fb4!important;padding:16px!important}
+  .hdr-row{margin-bottom:8px}
+  .title{font-size:20px!important;color:#1a1a2e!important}
+  .sub{color:#555!important}
+  .strip{background:#e0e0e0!important}
+  .sc{background:#f0f4ff!important;padding:8px!important}
+  .sl{color:#555!important}
+  .sv{color:#1a5fb4!important;font-size:14px!important}
+  .card{background:#fff!important;border:1px solid #e0e0e0!important;break-inside:avoid}
+  .st{color:inherit!important}
+  select,.sw,.qb,.tog,.bg,.sync,.chips{display:none!important}
+  canvas{max-height:180px!important}
+  .pbox{background:#f8f8f8!important;border-color:#e0e0e0!important;break-inside:avoid}
+  .pk{color:#555!important}
+  .ib{background:#f8f8f8!important;border-color:#e0e0e0!important}
+  .estep{background:#f8f8f8!important}
+  .eop-c,.eop-ln{color:#555!important;background:#f0f0f0!important}
+  .eres{border:2px solid!important}
+  .sgrid .sg{background:#f8f8f8!important;border-color:#e0e0e0!important}
+  .pdf-btn,.optsell{display:none!important}
+  /* Show static values */
+  .print-val{display:block!important}
+  /* Section headers */
+  .sh{margin-bottom:10px!important}
+  .sb{display:none!important}
+  footer-note{display:block!important}
+}
+.print-val{display:none}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr" id="hdr">
+  <div class="hdr-row">
+    <div class="logo">AUTO</div>
+    <div>
+      <div class="title">Autofinanzierungsrechner</div>
+      <div class="sub">Ballonfinanzierung · Wertentwicklung · Verkauf</div>
+    </div>
+  </div>
+  <div class="strip">
+    <div class="sc"><div class="sl">Nettodarlehen</div><div class="sv" id="s-kp">—</div></div>
+    <div class="sc"><div class="sl">Monatsrate</div><div class="sv" id="s-mr">—</div></div>
+    <div class="sc"><div class="sl">Schlussrate</div><div class="sv" id="s-sr">—</div></div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ─── FAHRZEUGAUSWAHL ─── -->
+<div class="card">
+  <div class="sh"><div class="sb" style="background:var(--blue)"></div><span class="st" style="color:var(--blue)">Fahrzeugauswahl</span></div>
+  <div style="margin-bottom:14px">
+    <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.09em;margin-bottom:6px">Marke</div>
+    <select id="sel-brand" onchange="onBrandChange()"></select>
+  </div>
+  <div>
+    <div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:.09em;margin-bottom:6px">Modell / Baureihe</div>
+    <select id="sel-model" onchange="onModelChange()"></select>
+  </div>
+  <div class="ib" style="margin-top:12px" id="car-info">Fahrzeug wählen für spezifische Wertverlustprognose.</div>
+</div>
+
+<!-- ─── BANKAUSWAHL ─── -->
+<div class="card">
+  <div class="sh"><div class="sb" style="background:#7c3aed"></div><span class="st" style="color:#7c3aed">Bank &amp; Zinssatz</span></div>
+  <div class="bg" id="bank-grid"></div>
+  <div class="ib" id="bank-info" style="margin-top:4px"></div>
+  <div class="sw" style="margin-top:16px;margin-bottom:0">
+    <div class="sw-h"><span class="sw-l">Zinssatz p.a. (manuell)</span><span class="sw-v" id="v-zins"></span></div>
+    <input type="range" id="r-zins" min="1.0" max="15.0" step="0.1" value="6.9">
+    <div class="sw-r"><span>1,0 %</span><span>15,0 %</span></div>
+  </div>
+</div>
+
+<!-- ─── FAHRZEUG & FINANZIERUNG ─── -->
+<div class="card">
+  <div class="sh"><div class="sb" style="background:var(--blue)"></div><span class="st" style="color:var(--blue)">Fahrzeug &amp; Kredit</span></div>
+  <div class="sw">
+    <div class="sw-h"><span class="sw-l">Kaufpreis</span><span class="sw-v" id="v-kp"></span></div>
+    <input type="range" id="r-kp" min="5000" max="300000" step="1000" value="50000">
+    <div class="sw-r"><span>5.000 €</span><span>300.000 €</span></div>
+  </div>
+  <div class="sw">
+    <div class="sw-h"><span class="sw-l">Anzahlung</span><span class="sw-v" id="v-az"></span></div>
+    <input type="range" id="r-az" min="0" max="100000" step="500" value="0">
+    <div class="sw-r"><span>0 €</span><span id="az-max">100.000 €</span></div>
+    <div class="sw-nt" id="az-note"></div>
+  </div>
+  <div style="background:rgba(26,127,232,.08);border:1px solid rgba(26,127,232,.2);border-radius:10px;padding:10px 13px;font-size:11px;color:var(--mu);margin-bottom:18px">
+    <strong style="color:var(--blue)">Nettodarlehen:</strong> <span id="nd-val">—</span>
+  </div>
+  <div class="sw" style="margin-bottom:0">
+    <div class="sw-h"><span class="sw-l">Laufzeit</span><span class="sw-v" id="v-lz"></span></div>
+    <input type="range" id="r-lz" min="12" max="96" step="6" value="60">
+    <div class="sw-r"><span>12 Mon.</span><span>96 Mon.</span></div>
+  </div>
+</div>
+
+<!-- ─── FINANZIERUNGSSTRUKTUR ─── -->
+<div class="card">
+  <div class="sh"><div class="sb" style="background:var(--blue)"></div><span class="st" style="color:var(--blue)">Finanzierungsstruktur</span></div>
+  <div class="tog">
+    <button id="btn-rate" class="on" onclick="setMode('rate')">Rate festlegen</button>
+    <button id="btn-bal" onclick="setMode('balloon')">Schlussrate festlegen</button>
+  </div>
+  <div class="sw">
+    <div class="sw-h"><span class="sw-l">Monatsrate</span><span class="sw-v" id="v-mr"></span></div>
+    <input type="range" id="r-mr" min="100" max="3000" step="25" value="900">
+    <div class="sw-r"><span>100 €</span><span>3.000 €</span></div>
+  </div>
+  <div class="qb" id="qb"></div>
+  <div class="sw">
+    <div class="sw-h"><span class="sw-l">Schlussrate (Laufzeitende)</span><span class="sw-v" id="v-slr"></span></div>
+    <input type="range" id="r-slr" min="0" max="200000" step="500" value="0" disabled>
+    <div class="sw-r"><span>0 €</span><span id="slr-max">200.000 €</span></div>
+  </div>
+  <div class="ib" id="m1info"></div>
+</div>
+
+<!-- ─── WERTENTWICKLUNG ─── -->
+<div class="card">
+  <div class="sh"><div class="sb" style="background:var(--yel)"></div><span class="st" style="color:var(--yel)">Wertentwicklung &amp; Prognose</span></div>
+  <div class="chips" id="chips"></div>
+  <div style="position:relative;height:205px"><canvas id="wChart"></canvas></div>
+  <div class="cleg">
+    <span style="color:var(--blue)">━ Historisch</span>
+    <span style="color:var(--blue);opacity:.45">╌ Prognose</span>
+    <span style="color:var(--red)">╌ Restschuld</span>
+    <span style="color:var(--yel)">╎ Verkauf</span>
+  </div>
+  <div class="pbox">
+    <div style="font-size:9px;color:var(--yel);letter-spacing:.16em;text-transform:uppercase;font-weight:600;margin-bottom:10px">PROGNOSE · MONAT <span id="p-m"></span> · <span id="p-date"></span></div>
+    <div class="prow"><span class="pk">Fahrzeugwert (Prognose)</span><span class="pv" id="p-wert"></span></div>
+    <div class="prow"><span class="pk">Restschuld</span><span class="pv" style="color:var(--red)" id="p-rs"></span></div>
+    <div class="prow"><span class="pk">Wert − Restschuld</span><span class="pv" id="p-diff"></span></div>
+    <div class="prow"><span class="pk">Ø Wertverlust p.a. (Prognose)</span><span class="pv" style="color:var(--mu)" id="p-depr"></span></div>
+    <div class="prow" style="border-bottom:none"><span class="pk">Kumulierter Wertverlust</span><span class="pv" style="color:var(--mu)" id="p-cum"></span></div>
+  </div>
+  <div class="optsell" id="optsell-box">
+    <div style="font-size:9px;color:var(--grn);letter-spacing:.15em;text-transform:uppercase;font-weight:600;margin-bottom:5px">✓ Optimales Verkaufsfenster</div>
+    <div style="font-size:13px;color:var(--tx)" id="optsell-txt"></div>
+  </div>
+</div>
+
+<!-- ─── VORZEITIGER VERKAUF ─── -->
+<div class="card">
+  <div class="sh"><div class="sb" style="background:var(--yel)"></div><span class="st" style="color:var(--yel)">Vorzeitiger Verkauf</span></div>
+  <button class="sync on" id="syncbtn" onclick="toggleSync()">
+    <span style="width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0"></span>
+    <span id="sync-lbl">Prognose übernommen</span>
+  </button>
+  <div class="sw">
+    <div class="sw-h"><span class="sw-l">Verkauf nach</span><span class="sw-v" id="v-vn"></span></div>
+    <input type="range" id="r-vn" min="6" max="60" step="1" value="36">
+    <div class="sw-r"><span>6 Mon.</span><span id="vn-max">60 Mon.</span></div>
+  </div>
+  <div class="sw" style="margin-bottom:0">
+    <div class="sw-h"><span class="sw-l">Verkaufspreis</span><span class="sw-v" id="v-vp"></span></div>
+    <input type="range" id="r-vp" min="1000" max="250000" step="500" value="27000">
+    <div class="sw-r"><span>1.000 €</span><span>250.000 €</span></div>
+  </div>
+</div>
+
+<!-- ─── RESTSCHULD-VERLAUF ─── -->
+<div class="card">
+  <div class="sh"><div class="sb" style="background:var(--blue)"></div><span class="st" style="color:var(--blue)">Restschuld-Verlauf</span></div>
+  <div style="position:relative;height:165px"><canvas id="rsChart"></canvas></div>
+  <div class="cleg">
+    <span style="color:var(--blue)">━ Restschuld</span>
+    <span style="color:var(--yel)">╌ Verkauf M.<span id="rs-vn"></span></span>
+    <span style="color:var(--grn)">╌ Verkaufspreis</span>
+  </div>
+</div>
+
+<!-- ─── ENDÜBERSICHT ─── -->
+<div style="margin-top:20px">
+  <div style="text-align:center;font-size:10px;color:var(--mu);letter-spacing:.16em;text-transform:uppercase;margin-bottom:14px">
+    Endübersicht · Monat <span id="eu-m"></span>
+  </div>
+  <div class="estep">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div class="elbl" style="color:var(--grn)">Verkaufspreis</div>
+        <div class="eamt" style="color:var(--grn)" id="eu-vp"></div>
+      </div>
+      <div style="width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(21,128,61,.35);background:rgba(21,128,61,.07);display:flex;align-items:center;justify-content:center;font-size:20px">🚗</div>
+    </div>
+  </div>
+  <div class="eop"><div class="eop-ln"></div><div class="eop-c">−</div><div class="eop-ln"></div></div>
+  <div class="estep" style="border-color:rgba(220,38,38,.2)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div style="flex:1">
+        <div class="elbl" style="color:var(--red)">Restschuld · Monat <span id="eu-m2"></span></div>
+        <div class="eamt" style="color:var(--red)" id="eu-rs"></div>
+      </div>
+      <div style="width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(220,38,38,.3);background:rgba(220,38,38,.07);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">🏦</div>
+    </div>
+    <div class="ib" style="margin-top:14px">
+      <strong>Restschuld-Formel:</strong><br>
+      RS(k) = PV·(1+r)ᵏ − Rate·[(1+r)ᵏ−1]/r<br><br>
+      <span id="eu-fv"></span><br><br>
+      <em style="font-size:10px">Anfangs tilgst du wenig — der Schuldenabbau beschleunigt sich über die Laufzeit.</em>
+    </div>
+  </div>
+  <div class="eop"><div class="eop-ln"></div><div class="eop-c">=</div><div class="eop-ln"></div></div>
+  <div class="eres" id="eres">
+    <div class="ebar" id="ebar"></div>
+    <div style="padding-top:6px">
+      <div class="elbl" id="elbl"></div>
+      <div class="eamt" id="eamt"></div>
+      <div style="font-size:12px;color:var(--mu);margin-top:8px" id="esub"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── STATS ─── -->
+<div class="sgrid">
+  <div class="sg"><div class="sg-l">Raten bis Verkauf</div><div class="sg-v" id="sg-paid"></div></div>
+  <div class="sg"><div class="sg-l">Schlussrate (entfällt)</div><div class="sg-v" style="color:var(--mu)" id="sg-sr"></div></div>
+  <div class="sg"><div class="sg-l">Gesamtzinsen (voll)</div><div class="sg-v" style="color:var(--red)" id="sg-gz"></div></div>
+  <div class="sg"><div class="sg-l">Netto-Kosten</div><div class="sg-v" id="sg-nk"></div></div>
+</div>
+
+<!-- ─── PDF BUTTON ─── -->
+<button class="pdf-btn" onclick="exportPDF()">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    <line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/>
+  </svg>
+  PDF erstellen &amp; Speichern
+</button>
+
+<div style="text-align:center;font-size:10px;color:var(--dim);margin-top:14px;line-height:2;padding:0 6px">
+  Zinsdaten: Capitalo / Bundesbank April 2026 · Marktdurchschnitt ~5,9 % eff. p.a.<br>
+  Wertentwicklung: pkw.de / AutoScout24 / DAT Report 2019–2026<br>
+  Alle Angaben ohne Gewähr · Keine Finanzberatung
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+'use strict';
+// ╔══════════════════════════════════════════════════════╗
+//  FORMATTERS
+// ╚══════════════════════════════════════════════════════╝
+const E = v => new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(v);
+const P = v => v.toFixed(1).replace('.',',')+'\u202f%';
+
+// ╔══════════════════════════════════════════════════════╗
+//  BANK DATA  (Quelle: Capitalo / Bundesbank Apr 2026)
+// ╚══════════════════════════════════════════════════════╝
+const BANKS = [
+  {id:'ing',     name:'ING',             rate:5.63, min:3.49, sub:'ab 3,49 % | Top-Score 85/100'},
+  {id:'bank11',  name:'Bank11',          rate:5.24, min:5.24, sub:'Festzins · via ADAC'},
+  {id:'santander',name:'Santander',      rate:5.39, min:5.39, sub:'bis 150.000 € · 2/3-Zins'},
+  {id:'dkb',     name:'DKB',             rate:6.29, min:6.29, sub:'Festzins · Digital'},
+  {id:'targobank',name:'Targobank',       rate:6.99, min:2.95, sub:'ab 2,95 % (12 Mon.)'},
+  {id:'vwbank',  name:'VW Bank',         rate:5.49, min:5.49, sub:'Herst.-Finanzierung'},
+  {id:'bmwbank', name:'BMW Bank',        rate:5.99, min:5.99, sub:'Herst.-Finanzierung'},
+  {id:'mbbank',  name:'Mercedes Bank',   rate:6.49, min:6.49, sub:'Herst.-Finanzierung'},
+  {id:'bos',     name:'Bank of Scotland',rate:5.94, min:5.39, sub:'ab 5,39 % · 2/3-Zins'},
+  {id:'creditplus',name:'CreditPlus',    rate:7.49, min:7.49, sub:'Schnelle Auszahlung'},
+  {id:'manuell', name:'Manuell',         rate:null, min:null, sub:'Eigenen Zins eingeben'},
+];
+
+// ╔══════════════════════════════════════════════════════╗
+//  CAR DATA  (Marke → Modelle mit Wertverlust p.a.)
+// ╚══════════════════════════════════════════════════════╝
+const CARS = {
+  'BMW':[
+    {m:'1er F20 (2011–2019) 116i/118i/120i/M135i', d:[0.14,0.12,0.11,0.10,0.09,0.09]},
+    {m:'1er F40 (2019–) 116i/118i/M135i xDrive',   d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'2er F22 Coupé (2014–2021) 220i/M240i',     d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'2er G42 Coupé (2021–) 220i/M240i xDrive',  d:[0.10,0.10,0.09,0.09,0.08,0.08]},
+    {m:'M2 F87 (2016–2021) Competition',           d:[0.08,0.08,0.07,0.07,0.07,0.06]},
+    {m:'M2 G87 (2022–) Competition xDrive',        d:[0.08,0.07,0.07,0.07,0.06,0.06]},
+    {m:'3er F30 (2012–2019) 320i/330i/335i',       d:[0.12,0.11,0.11,0.10,0.09,0.09]},
+    {m:'3er G20 (2019–) 320i/330i/M340i',          d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'M3 F80 (2014–2018) Competition',           d:[0.09,0.08,0.08,0.07,0.07,0.06]},
+    {m:'M3 G80 (2021–) Competition/CS/Touring',    d:[0.08,0.08,0.07,0.07,0.06,0.06]},
+    {m:'4er F32 Coupé (2013–2020) 420i/430i/440i', d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'4er F33 Cabrio (2013–2020) 420i/430i/440i',d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'4er F82 M4 (2014–2020) Coupé/CS/GTS',      d:[0.09,0.08,0.08,0.07,0.07,0.06]},
+    {m:'4er F83 M4 Cabrio (2014–2020)',             d:[0.10,0.09,0.09,0.08,0.08,0.07]},
+    {m:'4er G22 Coupé (2020–) 420i/430i/M440i',    d:[0.10,0.10,0.09,0.09,0.08,0.08]},
+    {m:'4er G82 M4 (2021–) Competition/CS/xDrive', d:[0.08,0.07,0.07,0.07,0.06,0.06]},
+    {m:'5er F10 (2010–2017) 520i/530i/550i/M5',    d:[0.12,0.11,0.11,0.10,0.09,0.09]},
+    {m:'5er G30 (2017–) 520i/530i/M550i',          d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'M5 F90 (2018–) Competition/CS',            d:[0.09,0.08,0.08,0.07,0.07,0.06]},
+    {m:'6er F12 Cabrio (2011–2018) 640i/650i',     d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+    {m:'6er F13 Coupé (2011–2018) 640i/650i/M6',   d:[0.12,0.11,0.11,0.10,0.09,0.09]},
+    {m:'8er G14 Cabrio (2018–) 840i/M850i',        d:[0.11,0.10,0.09,0.09,0.08,0.08]},
+    {m:'8er G15 Coupé (2018–) 840i/M850i/M8',      d:[0.10,0.09,0.09,0.08,0.08,0.07]},
+    {m:'X1 F48 (2015–2022) 18i/20i/25i',           d:[0.12,0.11,0.11,0.10,0.09,0.09]},
+    {m:'X1 U11 (2022–) 20i/23i/M35i',              d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'X2 F39 (2018–2023) 20i/25i/M35i',          d:[0.12,0.11,0.11,0.10,0.09,0.09]},
+    {m:'X3 F25 (2010–2017) 20i/28i/35i',           d:[0.12,0.11,0.11,0.10,0.09,0.09]},
+    {m:'X3 G01 (2017–) 20i/30i/M40i',              d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'X3 M F97 (2019–) Competition',             d:[0.09,0.08,0.08,0.07,0.07,0.06]},
+    {m:'X4 F26 (2014–2018) 20i/28i/35i',           d:[0.12,0.11,0.11,0.10,0.09,0.09]},
+    {m:'X4 G02 (2018–) 20i/30i/M40i',              d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'X5 F15 (2013–2018) 35i/50i/M',             d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'X5 G05 (2018–) 40i/50e/M50i',              d:[0.10,0.10,0.09,0.09,0.08,0.08]},
+    {m:'X5 M F95 / G05 M Competition',             d:[0.09,0.08,0.08,0.07,0.07,0.06]},
+    {m:'X6 F16 (2014–2019) 35i/50i',               d:[0.12,0.11,0.11,0.10,0.09,0.09]},
+    {m:'X6 G06 (2019–) 40i/M50i',                  d:[0.11,0.10,0.09,0.09,0.08,0.08]},
+    {m:'X7 G07 (2019–) 40i/50i/M60i',              d:[0.11,0.10,0.09,0.09,0.08,0.08]},
+    {m:'i4 G26 (2021–) eDrive40/M50',              d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+    {m:'i5 G60 (2023–) eDrive40/M60',              d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+    {m:'i7 G70 (2022–) eDrive50/M70',              d:[0.14,0.13,0.12,0.11,0.10,0.09]},
+    {m:'iX M60 / iX3 (2021–)',                     d:[0.14,0.13,0.12,0.11,0.10,0.09]},
+  ],
+  'Mercedes-Benz':[
+    {m:'A-Klasse W176 (2012–2018) A180/A200/A250/AMG A45',d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+    {m:'A-Klasse W177 (2018–) A180/A200/AMG A35/A45 S',   d:[0.12,0.11,0.10,0.10,0.09,0.09]},
+    {m:'C-Klasse W205 (2014–2021) C180/C220d/C43/C63',    d:[0.12,0.11,0.11,0.10,0.09,0.09]},
+    {m:'C-Klasse W206 (2021–) C200/C300/C43/C63 e',       d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'AMG C63 W205/W206',                               d:[0.10,0.09,0.09,0.08,0.08,0.07]},
+    {m:'E-Klasse W213 (2016–2023) E200/E300/E53/E63',     d:[0.12,0.11,0.11,0.10,0.09,0.09]},
+    {m:'AMG E63 S W213',                                  d:[0.10,0.09,0.08,0.08,0.07,0.07]},
+    {m:'S-Klasse W222 (2013–2020)',                        d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+    {m:'S-Klasse W223 (2020–) S400d/S500/AMG S63',        d:[0.12,0.11,0.10,0.09,0.09,0.08]},
+    {m:'CLA C117/C118 (2013–) 200/250/AMG 35/45',         d:[0.12,0.11,0.11,0.10,0.09,0.09]},
+    {m:'GLC X253/X254 (2015–) 200/300/43/63',             d:[0.12,0.11,0.10,0.10,0.09,0.09]},
+    {m:'GLE W166/W167 (2015–) 350d/400d/AMG 53/63',       d:[0.12,0.11,0.10,0.09,0.09,0.08]},
+    {m:'GLS X167 (2019–) 400d/580/AMG 63',                d:[0.12,0.11,0.10,0.09,0.09,0.08]},
+    {m:'AMG GT C190/R190 (2014–) Roadster/Coupé',         d:[0.11,0.10,0.09,0.09,0.08,0.07]},
+    {m:'AMG GT R/Black Series',                           d:[0.09,0.08,0.08,0.07,0.07,0.06]},
+    {m:'EQC N293 / EQE / EQS (Elektro)',                  d:[0.15,0.14,0.13,0.12,0.11,0.10]},
+  ],
+  'Audi':[
+    {m:'A3 8V (2012–2020) 1.4/1.8/2.0 TFSI/TDI',    d:[0.12,0.11,0.11,0.10,0.09,0.09]},
+    {m:'A3 8Y (2020–) 30/35/40 TFSI/TDI',            d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'RS3 8V/8Y Sportback/Limousine',               d:[0.09,0.08,0.08,0.07,0.07,0.06]},
+    {m:'A4 B9 (2015–) 30/35/40/45 TFSI/TDI',         d:[0.12,0.11,0.11,0.10,0.09,0.09]},
+    {m:'RS4 B9 Avant Competition',                    d:[0.09,0.08,0.08,0.07,0.07,0.06]},
+    {m:'A5 F5 (2016–) Coupé/Sportback/Cabrio',        d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'RS5 F5 Coupé/Sportback',                      d:[0.09,0.08,0.08,0.07,0.07,0.06]},
+    {m:'A6 C8 (2018–) 40/45/55 TFSI/TDI',            d:[0.12,0.11,0.10,0.10,0.09,0.09]},
+    {m:'RS6 C8 Avant / RS7 C8',                       d:[0.09,0.08,0.08,0.07,0.07,0.06]},
+    {m:'A7 C8 (2018–) 45/55 TFSI',                   d:[0.12,0.11,0.10,0.09,0.09,0.08]},
+    {m:'A8 D5 (2017–) 50/55/60 TFSI',                d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+    {m:'R8 4S (2015–2023) V10 / V10 Plus',            d:[0.10,0.09,0.08,0.08,0.07,0.07]},
+    {m:'TT 8S (2014–2023) 40/45/TTS/TTRS',           d:[0.12,0.11,0.10,0.09,0.09,0.08]},
+    {m:'Q3 F3 (2018–) 35/40 TFSI/TDI',               d:[0.12,0.11,0.10,0.10,0.09,0.09]},
+    {m:'Q5 FY (2016–) 40/45/55 TFSI/TDI/SQ5',        d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'Q7 4M (2015–) 45/55/60 TFSI/TDI/SQ7',        d:[0.12,0.11,0.10,0.09,0.09,0.08]},
+    {m:'Q8 4M (2018–) 50/55 TFSI/TDI/SQ8/RSQ8',      d:[0.11,0.10,0.09,0.09,0.08,0.08]},
+    {m:'e-tron / Q8 e-tron (Elektro)',                d:[0.15,0.14,0.13,0.12,0.11,0.10]},
+  ],
+  'Volkswagen':[
+    {m:'Golf 7 (2012–2019) 1.0/1.4/1.6/2.0 TSI/TDI/GTI/R', d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+    {m:'Golf 8 (2019–) 1.0/1.5/2.0 TSI/TDI/GTI/R',          d:[0.12,0.11,0.10,0.10,0.09,0.09]},
+    {m:'Polo 6R/6C/AW 1.0/1.2 TSI GTI',                      d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+    {m:'Passat B8 (2014–2023) 1.4/1.6/2.0 TSI/TDI',          d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+    {m:'Arteon 3H (2017–) 1.5/2.0 TSI/TDI/R',                d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+    {m:'Tiguan (2016–) 1.4/2.0 TSI/TDI/R-Line/R',            d:[0.12,0.11,0.10,0.10,0.09,0.09]},
+    {m:'Touareg III CR7 (2018–) 3.0 TDI/V8 TDI/R',           d:[0.12,0.11,0.10,0.09,0.09,0.08]},
+    {m:'ID.3 (2020–) Pure/Pro/Pro S',                         d:[0.15,0.14,0.13,0.12,0.11,0.10]},
+    {m:'ID.4 / ID.5 (2020–) Pro/GTX',                        d:[0.15,0.14,0.13,0.12,0.11,0.10]},
+  ],
+  'Porsche':[
+    {m:'911 991 (2011–2019) Carrera/S/4S/GTS/Turbo/R',d:[0.07,0.06,0.06,0.06,0.05,0.05]},
+    {m:'911 992 (2019–) Carrera/S/4S/GTS/Turbo S/GT3',d:[0.06,0.06,0.05,0.05,0.05,0.05]},
+    {m:'718 Boxster/Cayman (982) GTS/GT4/Spyder',     d:[0.08,0.07,0.07,0.06,0.06,0.06]},
+    {m:'Cayenne 9YA (2018–) S/GTS/Turbo/Turbo S E',   d:[0.12,0.11,0.10,0.09,0.09,0.08]},
+    {m:'Macan (2014–) S/GTS/Turbo',                   d:[0.12,0.11,0.10,0.10,0.09,0.09]},
+    {m:'Panamera 971 (2016–) 4S/GTS/Turbo/Turbo S E', d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+    {m:'Taycan (2019–) 4S/GTS/Turbo/Turbo S/Cross',   d:[0.14,0.13,0.12,0.11,0.10,0.09]},
+  ],
+  'Mercedes-AMG':[
+    {m:'AMG GT 4-Türer C190/C192 Coupé',              d:[0.11,0.10,0.09,0.08,0.08,0.07]},
+    {m:'AMG GT 63 S 4-Türer',                         d:[0.10,0.09,0.08,0.08,0.07,0.07]},
+    {m:'AMG ONE (Formel-1 Motor)',                     d:[0.05,0.05,0.04,0.04,0.04,0.04]},
+  ],
+  'Aston Martin':[
+    {m:'DB11 (2016–) V8/V12 Coupe/Volante',           d:[0.13,0.12,0.11,0.10,0.09,0.08]},
+    {m:'Vantage V8 (2018–)',                           d:[0.12,0.11,0.10,0.09,0.09,0.08]},
+    {m:'DBX707 (2022–)',                               d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+  ],
+  'Lamborghini':[
+    {m:'Huracán EVO/STO (2014–2023)',                 d:[0.09,0.08,0.08,0.07,0.07,0.06]},
+    {m:'Urus (2018–) / Urus S/Performante',           d:[0.11,0.10,0.10,0.09,0.09,0.08]},
+    {m:'Revuelto (2023–)',                            d:[0.08,0.07,0.07,0.06,0.06,0.06]},
+  ],
+  'Ferrari':[
+    {m:'Roma / Roma Spider (2020–)',                  d:[0.08,0.07,0.07,0.06,0.06,0.06]},
+    {m:'F8 Tributo/Spider (2019–2022)',               d:[0.09,0.08,0.07,0.07,0.06,0.06]},
+    {m:'SF90 Stradale/Spider (2020–)',                d:[0.08,0.07,0.07,0.06,0.06,0.05]},
+    {m:'296 GTB/GTS (2021–)',                         d:[0.08,0.07,0.07,0.06,0.06,0.06]},
+  ],
+  'Maserati':[
+    {m:'Ghibli S Q4 (2013–2023)',                     d:[0.16,0.15,0.14,0.12,0.11,0.10]},
+    {m:'GranTurismo Folgore (2022–)',                  d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+    {m:'Levante S/Trofeo (2016–)',                    d:[0.15,0.14,0.13,0.11,0.10,0.09]},
+    {m:'MC20 (2020–)',                               d:[0.09,0.08,0.08,0.07,0.07,0.06]},
+  ],
+  'Jaguar / Land Rover':[
+    {m:'F-Type R (2013–) V6/V8 Coupé/Cabrio',        d:[0.13,0.12,0.11,0.10,0.09,0.09]},
+    {m:'Range Rover Sport L461 (2022–)',              d:[0.12,0.11,0.10,0.09,0.09,0.08]},
+    {m:'Range Rover L460 (2022–)',                    d:[0.12,0.11,0.10,0.09,0.09,0.08]},
+    {m:'Defender 90/110 (2020–)',                    d:[0.10,0.09,0.09,0.08,0.08,0.08]},
+  ],
+};
+
+// ════════════════════════════════════════════════════
+//  HISTORICAL MARKET DATA (relativ zu Kaufpreisbasis)
+// ════════════════════════════════════════════════════
+const HIST=[
+  [2019,9,1.48],[2020,1,1.42],[2020,4,1.31],[2020,8,1.35],
+  [2021,2,1.41],[2021,7,1.52],[2021,12,1.57],
+  [2022,5,1.61],[2022,9,1.50],[2022,12,1.39],
+  [2023,4,1.29],[2023,8,1.21],[2023,12,1.14],
+  [2024,4,1.08],[2024,8,1.04],[2024,12,1.01],
+  [2025,4,0.99],[2025,8,0.99],[2025,12,1.00],[2026,4,1.00],
+];
+const EVENTS=[
+  {y:2020,m:4,lbl:'COVID-19',col:'#ef4444'},
+  {y:2021,m:7,lbl:'Chip-Mangel',col:'#f59e0b'},
+  {y:2022,m:5,lbl:'Preishoch',col:'#22c55e'},
+  {y:2022,m:9,lbl:'EZB Zinsen ↑',col:'#ef4444'},
+  {y:2023,m:4,lbl:'EU ICE-Verbot',col:'#f59e0b'},
+  {y:2026,m:4,lbl:'Dein Kauf',col:'#1a7fe8'},
+];
+function histFactor(yr,mo){
+  const t=yr+(mo-1)/12;
+  const pts=HIST.map(([y,m,v])=>({t:y+(m-1)/12,v}));
+  if(t<=pts[0].t)return pts[0].v;
+  if(t>=pts[pts.length-1].t)return pts[pts.length-1].v;
+  for(let i=1;i<pts.length;i++){
+    if(t>=pts[i-1].t&&t<=pts[i].t){
+      const f=(t-pts[i-1].t)/(pts[i].t-pts[i-1].t);
+      return pts[i-1].v+(pts[i].v-pts[i-1].v)*f;
+    }
+  }
+  return 1;
+}
+
+// ════════════════════════════════════════════════════
+//  FINANCE MATH
+// ════════════════════════════════════════════════════
+function calcSR(PV,r,n,PMT){
+  if(r===0)return Math.max(0,PV-PMT*n);
+  return Math.max(0,(PV-PMT*(1-Math.pow(1+r,-n))/r)*Math.pow(1+r,n));
+}
+function calcPMT(PV,r,n,FV){
+  if(r===0)return (PV-FV)/n;
+  return (PV-FV/Math.pow(1+r,n))/((1-Math.pow(1+r,-n))/r);
+}
+function getRS(PV,r,PMT,k){
+  if(r===0)return Math.max(0,PV-PMT*k);
+  return Math.max(0,PV*Math.pow(1+r,k)-PMT*(Math.pow(1+r,k)-1)/r);
+}
+
+// ════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════
+const S={
+  brand:'BMW', modelIdx:12, // default BMW M4 F82
+  bankId:'manuell',
+  kp:50000, az:0, zins:6.9, lz:60,
+  mode:'rate', rate:900, bal:null,
+  vn:36, vp:null, sync:true,
+};
+
+// ════════════════════════════════════════════════════
+//  CAR SELECTORS
+// ════════════════════════════════════════════════════
+function buildCarSelectors(){
+  const brands=Object.keys(CARS);
+  const sb=document.getElementById('sel-brand');
+  sb.innerHTML=brands.map(b=>`<option value="${b}">${b}</option>`).join('');
+  sb.value=S.brand;
+  buildModelSelector();
+}
+function buildModelSelector(){
+  const models=CARS[S.brand]||[];
+  const sm=document.getElementById('sel-model');
+  sm.innerHTML=models.map((m,i)=>`<option value="${i}">${m.m}</option>`).join('');
+  sm.value=S.modelIdx;
+}
+function onBrandChange(){S.brand=document.getElementById('sel-brand').value;S.modelIdx=0;buildModelSelector();render();}
+function onModelChange(){S.modelIdx=+document.getElementById('sel-model').value;render();}
+function getDeprRates(){
+  const models=CARS[S.brand]||[];
+  return models[S.modelIdx]?.d||[0.10,0.10,0.09,0.09,0.08,0.08];
+}
+function projVal(kauf,months){
+  const dr=getDeprRates();
+  let v=kauf;
+  for(let m=0;m<months;m++){
+    const yr=Math.min(Math.floor(m/12),dr.length-1);
+    v*=Math.pow(1-dr[yr],1/12);
+  }
+  return Math.max(0,v);
+}
+
+// ════════════════════════════════════════════════════
+//  BANK GRID
+// ════════════════════════════════════════════════════
+function buildBankGrid(){
+  const el=document.getElementById('bank-grid');
+  el.innerHTML=BANKS.map(b=>`
+    <button class="bb ${S.bankId===b.id?'sel':''}" onclick="selectBank('${b.id}')">
+      <span class="bb-name">${b.name}</span>
+      <span class="bb-rate">${b.rate?P(b.rate):'— %'}</span>
+      <span class="bb-sub">${b.sub}</span>
+    </button>`).join('');
+}
+function selectBank(id){
+  S.bankId=id;
+  const b=BANKS.find(x=>x.id===id);
+  if(b&&b.rate){S.zins=b.rate;}
+  document.getElementById('r-zins').value=S.zins;
+  updateBankInfo();
+  buildBankGrid();
+  render();
+}
+function updateBankInfo(){
+  const b=BANKS.find(x=>x.id===S.bankId);
+  if(!b)return;
+  const el=document.getElementById('bank-info');
+  if(b.id==='manuell'){
+    el.innerHTML='<strong>Manuell:</strong> Ziehe den Regler auf deinen gewünschten Zinssatz.';
+  } else {
+    el.innerHTML=`<strong>${b.name}:</strong> 2/3-Zins ${b.rate?P(b.rate):'k.A.'} · ab ${b.min?P(b.min):'k.A.'} bei Top-Bonität · ${b.sub}`;
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  SLIDER GRADIENT
+// ════════════════════════════════════════════════════
+function sg(el){
+  if(el.disabled){el.style.background='var(--dim)';return;}
+  const f=((+el.value-+el.min)/(+el.max-+el.min))*100;
+  el.style.background=`linear-gradient(to right,var(--blue) ${f}%,var(--bord) ${f}%)`;
+}
+
+// ════════════════════════════════════════════════════
+//  DERIVED
+// ════════════════════════════════════════════════════
+function derive(){
+  const nd=Math.max(0,S.kp-S.az); // Nettodarlehen
+  const r=S.zins/100/12,n=S.lz;
+  const sr=S.mode==='rate'?calcSR(nd,r,n,S.rate):(S.bal??calcSR(nd,r,n,S.rate));
+  const mr=S.mode==='rate'?S.rate:(S.bal!=null?calcPMT(nd,r,n,S.bal):S.rate);
+  const vp=S.sync?Math.round(projVal(S.kp,S.vn)/500)*500:(S.vp??Math.round(projVal(S.kp,S.vn)/500)*500);
+  const rs=getRS(nd,r,mr,S.vn);
+  const diff=vp-rs;
+  const paid=mr*S.vn;
+  const gz=mr*n+sr-nd;
+  const z1=nd*r,t1=Math.max(0,mr-z1);
+  const rsd=[];let b=nd;
+  for(let k=0;k<=n;k++){rsd.push(Math.round(Math.max(0,b)));if(k<n){const z=b*r;b-=(mr-z);}}
+  let bestM=6,bestGap=-Infinity;
+  for(let m=6;m<=n;m++){
+    const gap=projVal(S.kp,m)-getRS(nd,r,mr,m);
+    if(gap>bestGap){bestGap=gap;bestM=m;}
+  }
+  return{nd,r,n,sr,mr,vp,rs,diff,paid,gz,z1,t1,rsd,bestM,bestGap};
+}
+
+// ════════════════════════════════════════════════════
+//  CHARTS
+// ════════════════════════════════════════════════════
+let wC=null,rsC=null,chartTimer=null;
+function monthToDate(m){
+  const yr=2026+Math.floor((3+m)/12),mo=((3+m)%12)+1;
+  return ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'][mo-1]+' '+yr;
+}
+
+function buildCharts(d){
+  const STEP=2;
+  const labs=[],hd=[],pd=[],rsd2=[];
+  const hEnd=2026+(4-1)/12;
+  for(let t=2019+(9-1)/12;t<=hEnd+0.01;t+=STEP/12){
+    const yr=Math.floor(t),m=Math.round((t-yr)*12)+1;
+    labs.push(yr*100+m);
+    hd.push(Math.round(histFactor(yr,m)*S.kp));
+    pd.push(null);rsd2.push(null);
+  }
+  hd[hd.length-1]=S.kp; pd[pd.length-1]=S.kp; rsd2[rsd2.length-1]=S.kp;
+  for(let m=STEP;m<=S.lz;m+=STEP){
+    const t=2026+(4-1+m)/12;
+    const yr=Math.floor(t),mo=Math.round((t-yr)*12)+1;
+    labs.push(yr*100+mo);
+    hd.push(null);
+    pd.push(Math.round(projVal(S.kp,m)));
+    rsd2.push(Math.round(getRS(d.nd,d.r,d.mr,m)));
+  }
+  const disp=labs.map(k=>{const yr=Math.floor(k/100),mm=k%100;return yr+'/'+(mm<10?'0'+mm:mm);});
+  function getX(ey,em){
+    const key=ey*100+em;
+    let best=0,bestD=999;
+    labs.forEach((l,i)=>{const dv=Math.abs(l-key);if(dv<bestD){bestD=dv;best=i;}});
+    return best;
+  }
+  // Value chart
+  const ctx1=document.getElementById('wChart').getContext('2d');
+  if(wC)wC.destroy();
+  wC=new Chart(ctx1,{
+    type:'line',
+    data:{labels:disp,datasets:[
+      {label:'Historisch',data:hd,borderColor:'#1a7fe8',backgroundColor:'rgba(26,127,232,0.07)',borderWidth:2,pointRadius:0,fill:true,tension:0.35,spanGaps:true},
+      {label:'Prognose',data:pd,borderColor:'#1a7fe8',backgroundColor:'rgba(26,127,232,0.04)',borderWidth:2,borderDash:[5,3],pointRadius:0,fill:true,tension:0.3,spanGaps:true},
+      {label:'Restschuld',data:rsd2,borderColor:'#dc2626',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false,tension:0.1,spanGaps:true},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#0e0e1a',borderColor:'#1d1d2e',borderWidth:1,titleColor:'#58587a',bodyColor:'#eaeaf5',titleFont:{size:10},bodyFont:{size:12,weight:'bold'},
+        callbacks:{title:i=>i[0].label,label:i=>i.raw!=null?`${i.dataset.label}: ${E(i.raw)}`:''}}},
+      scales:{x:{ticks:{color:'#58587a',font:{size:9},maxTicksLimit:7,callback(v,i){const l=this.getLabelForValue(v);return l&&l.endsWith('/01')?l.substring(0,4):'';}},grid:{color:'#1d1d2e'},border:{display:false}},
+        y:{ticks:{color:'#58587a',font:{size:9},callback:v=>`${(v/1000).toFixed(0)}k`},grid:{color:'#1d1d2e'},border:{display:false}}}},
+    plugins:[{id:'ev',afterDraw(chart){
+      const{ctx,scales,data}=chart;
+      EVENTS.forEach(ev=>{
+        const xi=getX(ev.y,ev.m);
+        const x=scales.x.getPixelForValue(xi);
+        ctx.save();ctx.setLineDash([2,3]);ctx.strokeStyle=ev.col+'88';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(x,scales.y.top);ctx.lineTo(x,scales.y.bottom);ctx.stroke();ctx.restore();
+      });
+      const si=getX(2026,4)+Math.ceil(S.vn/STEP);
+      const sx=scales.x.getPixelForValue(Math.min(si,data.labels.length-1));
+      ctx.save();ctx.setLineDash([3,2]);ctx.strokeStyle='#b4530999';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(sx,scales.y.top);ctx.lineTo(sx,scales.y.bottom);ctx.stroke();ctx.restore();
+    }}]
+  });
+  // RS chart
+  const ctx2=document.getElementById('rsChart').getContext('2d');
+  if(rsC)rsC.destroy();
+  rsC=new Chart(ctx2,{
+    type:'line',
+    data:{labels:Array.from({length:S.lz+1},(_,i)=>i),datasets:[
+      {label:'Restschuld',data:d.rsd,borderColor:'#1a7fe8',backgroundColor:'rgba(26,127,232,0.1)',borderWidth:2,pointRadius:0,fill:true,tension:0.2},
+      {label:'Verkaufspreis',data:new Array(S.lz+1).fill(d.vp),borderColor:'#15803d',backgroundColor:'transparent',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#0e0e1a',borderColor:'#1d1d2e',borderWidth:1,titleColor:'#58587a',bodyColor:'#eaeaf5',titleFont:{size:10},bodyFont:{size:12,weight:'bold'},
+        callbacks:{title:i=>'Monat '+i[0].label,label:i=>`${i.dataset.label}: ${E(i.raw)}`}}},
+      scales:{x:{ticks:{color:'#58587a',font:{size:9},maxTicksLimit:7,callback:v=>v%12===0?`M.${v}`:''},grid:{color:'#1d1d2e'},border:{display:false}},
+        y:{ticks:{color:'#58587a',font:{size:9},callback:v=>`${(v/1000).toFixed(0)}k`},grid:{color:'#1d1d2e'},border:{display:false}}}},
+    plugins:[{id:'vl',afterDraw(chart){
+      const{ctx,scales}=chart;
+      const x=scales.x.getPixelForValue(S.vn);
+      ctx.save();ctx.setLineDash([4,3]);ctx.strokeStyle='#b4530999';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(x,scales.y.top);ctx.lineTo(x,scales.y.bottom);ctx.stroke();ctx.restore();
+    }}]
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════
+function render(){
+  const d=derive();
+  const{nd,r,sr,mr,vp,rs,diff,paid,gz,z1,t1,bestM,bestGap}=d;
+  const profit=diff>=0;
+  const mc=profit?'var(--grn)':'var(--red)';
+
+  // Strip
+  document.getElementById('s-kp').textContent=E(nd);
+  document.getElementById('s-mr').textContent=E(Math.round(mr));
+  document.getElementById('s-sr').textContent=E(Math.round(sr));
+
+  // Car info
+  const models=CARS[S.brand]||[];
+  const mod=models[S.modelIdx];
+  if(mod){
+    const dr=mod.d;
+    document.getElementById('car-info').innerHTML=
+      `<strong>${S.brand} ${mod.m}</strong><br>Ø Wertverlust Jahr 1–6: ${dr.map(x=>(x*100).toFixed(0)+'%').join(' / ')} p.a.`;
+  }
+
+  // Bank
+  buildBankGrid();
+  updateBankInfo();
+
+  // Zins slider
+  document.getElementById('v-zins').textContent=P(S.zins);
+  document.getElementById('r-zins').value=S.zins;
+  sg(document.getElementById('r-zins'));
+
+  // Kredit
+  document.getElementById('v-kp').textContent=E(S.kp);
+  document.getElementById('r-kp').value=S.kp;
+  sg(document.getElementById('r-kp'));
+
+  // Anzahlung
+  const azMax=Math.min(S.kp*0.9,100000);
+  const azEl=document.getElementById('r-az');
+  azEl.max=azMax; azEl.value=Math.min(S.az,azMax);
+  document.getElementById('az-max').textContent=E(azMax);
+  document.getElementById('v-az').textContent=E(S.az);
+  document.getElementById('az-note').textContent=S.az>0?`Eigenkapital ${P(S.az/S.kp*100)} des Kaufpreises`:'';
+  document.getElementById('nd-val').textContent=`${E(nd)} (${E(S.kp)} − ${E(S.az)})`;
+  sg(azEl);
+
+  // Laufzeit
+  document.getElementById('v-lz').textContent=S.lz+' Monate';
+  document.getElementById('r-lz').value=S.lz;
+  sg(document.getElementById('r-lz'));
+
+  // Mode
+  document.getElementById('btn-rate').className=S.mode==='rate'?'on':'';
+  document.getElementById('btn-bal').className=S.mode==='balloon'?'on':'';
+  const mrEl=document.getElementById('r-mr');
+  const slrEl=document.getElementById('r-slr');
+  mrEl.disabled=S.mode==='balloon';
+  slrEl.disabled=S.mode==='rate';
+  document.getElementById('v-mr').textContent=E(Math.round(mr));
+  document.getElementById('v-slr').textContent=E(Math.round(sr));
+  mrEl.value=Math.round(mr); slrEl.value=Math.round(sr);
+  slrEl.max=nd; document.getElementById('slr-max').textContent=E(nd);
+  sg(mrEl); sg(slrEl);
+
+  // Quick buttons
+  const qbEl=document.getElementById('qb');
+  qbEl.innerHTML=[500,700,800,900,1000,1200].map(v=>`
+    <button onclick="setRate(${v})" style="padding:8px 0;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;
+      border:1px solid ${Math.round(mr)===v?'var(--blue)':'var(--bord)'};
+      background:${Math.round(mr)===v?'rgba(26,127,232,.15)':'transparent'};
+      color:${Math.round(mr)===v?'var(--blue)':'var(--mu)'}">${v}</button>`).join('');
+
+  // Monat 1 info
+  document.getElementById('m1info').innerHTML=`<strong>Monat 1:</strong> Zinsen ${E(z1)} · Tilgung ${E(t1)}`;
+
+  // Event chips
+  document.getElementById('chips').innerHTML=EVENTS.map(ev=>`
+    <div class="chip" style="color:${ev.col};border-color:${ev.col}44;background:${ev.col}12">
+      ${ev.lbl} ${ev.y}</div>`).join('');
+
+  // Prognose box
+  const pw=projVal(S.kp,S.vn);
+  const pDiff=pw-rs;
+  document.getElementById('p-m').textContent=S.vn;
+  document.getElementById('p-date').textContent=monthToDate(S.vn);
+  document.getElementById('p-wert').textContent=E(pw);
+  document.getElementById('p-rs').textContent=E(rs);
+  const pdEl=document.getElementById('p-diff');
+  pdEl.textContent=E(pDiff); pdEl.style.color=pDiff>=0?'var(--grn)':'var(--red)';
+  const dr=getDeprRates();
+  document.getElementById('p-depr').textContent=`~${(dr[Math.min(Math.floor(S.vn/12),dr.length-1)]*100).toFixed(0)}\u202f% p.a.`;
+  document.getElementById('p-cum').textContent=E(S.kp-pw)+` (${(((S.kp-pw)/S.kp)*100).toFixed(1)}\u202f%)`;
+
+  // Optimal sell
+  const ob=document.getElementById('optsell-box');
+  if(bestGap>500){ob.style.display='block';document.getElementById('optsell-txt').textContent=`Monat ${bestM} · ${monthToDate(bestM)} · maximaler Vorteil ≈ ${E(bestGap)}`;}
+  else{ob.style.display='none';}
+
+  // Sync
+  const sb2=document.getElementById('syncbtn');
+  sb2.className='sync '+(S.sync?'on':'off');
+  document.getElementById('sync-lbl').textContent=S.sync?'Prognose übernommen':'Prognose übernehmen';
+
+  // Verkauf
+  document.getElementById('v-vn').textContent=S.vn+' Monate';
+  document.getElementById('v-vp').textContent=E(vp);
+  document.getElementById('r-vn').max=S.lz;
+  document.getElementById('vn-max').textContent=S.lz+' Mon.';
+  document.getElementById('r-vn').value=S.vn;
+  document.getElementById('r-vp').value=vp;
+  document.getElementById('rs-vn').textContent=S.vn;
+  sg(document.getElementById('r-vn')); sg(document.getElementById('r-vp'));
+
+  // End overview
+  ['eu-m','eu-m2'].forEach(id=>document.getElementById(id).textContent=S.vn);
+  document.getElementById('eu-vp').textContent=E(vp);
+  document.getElementById('eu-rs').textContent=E(rs);
+  document.getElementById('eu-fv').innerHTML=
+    `PV = ${E(nd)} · r = ${(S.zins/12).toFixed(3).replace('.',',')}% Mon. · k = ${S.vn} · Rate = ${E(Math.round(mr))}`;
+  const resc=document.getElementById('eres');
+  resc.style.background=profit?'rgba(21,128,61,.06)':'rgba(220,38,38,.06)';
+  resc.style.border=`1px solid ${profit?'rgba(21,128,61,.25)':'rgba(220,38,38,.25)'}`;
+  document.getElementById('ebar').style.background=
+    `linear-gradient(to right,${profit?'#15803d':'#dc2626'},${profit?'#15803d55':'#dc262655'})`;
+  document.getElementById('elbl').textContent=profit?'✓  Du behältst':'⚠  Du schuldest der Bank noch';
+  document.getElementById('elbl').style.color=mc;
+  document.getElementById('eamt').textContent=E(Math.abs(diff));
+  document.getElementById('eamt').style.color=mc;
+  document.getElementById('esub').textContent=`${E(vp)} − ${E(rs)} = ${profit?'Gewinn':'Fehlbetrag'}`;
+
+  // Stats
+  document.getElementById('sg-paid').textContent=E(paid);
+  document.getElementById('sg-sr').textContent=E(Math.round(sr));
+  document.getElementById('sg-gz').textContent=E(Math.max(0,gz));
+  const nkEl=document.getElementById('sg-nk');
+  const nk=paid+rs-vp;
+  nkEl.textContent=E(nk); nkEl.style.color=nk<=0?'var(--grn)':'var(--red)';
+
+  // Charts (debounced)
+  clearTimeout(chartTimer);
+  chartTimer=setTimeout(()=>buildCharts(d),120);
+}
+
+// ════════════════════════════════════════════════════
+//  ACTIONS
+// ════════════════════════════════════════════════════
+function setMode(m){if(m==='balloon'&&S.bal==null){const d=derive();S.bal=Math.round(d.sr/500)*500;}S.mode=m;render();}
+function setRate(v){S.rate=v;render();}
+function toggleSync(){S.sync=!S.sync;if(!S.sync){S.vp=derive().vp;}render();}
+
+// ════════════════════════════════════════════════════
+//  PDF EXPORT
+// ════════════════════════════════════════════════════
+function exportPDF(){
+  const d=derive();
+  const brand=S.brand, mod=(CARS[S.brand]||[])[S.modelIdx]?.m||'—';
+  const bank=BANKS.find(b=>b.id===S.bankId);
+  const profit=d.diff>=0;
+
+  const html=`<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">
+<title>Finanzierungsübersicht</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;color:#1a1a2e;max-width:680px;margin:32px auto;padding:0 24px;font-size:13px}
+  h1{font-size:22px;font-weight:800;margin-bottom:4px}
+  .sub{font-size:11px;color:#666;margin-bottom:24px;letter-spacing:.05em;text-transform:uppercase}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+  .box{background:#f4f6fb;border-radius:10px;padding:14px 16px;border:1px solid #e0e4f0}
+  .box-lbl{font-size:9px;color:#666;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px}
+  .box-val{font-size:20px;font-weight:700;color:#1a5fb4}
+  .sec{font-size:11px;font-weight:700;color:#1a5fb4;letter-spacing:.15em;text-transform:uppercase;margin:20px 0 8px;border-bottom:2px solid #1a5fb4;padding-bottom:4px}
+  .row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #e8ecf4;font-size:13px}
+  .row:last-child{border-bottom:none}
+  .lbl{color:#555}
+  .val{font-weight:700}
+  .result{border-radius:12px;padding:20px;margin:16px 0;border:2px solid}
+  .result-lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px;font-weight:600}
+  .result-amt{font-size:40px;font-weight:800;letter-spacing:-.02em;line-height:1}
+  .formula{background:#f4f6fb;border-radius:10px;padding:14px;margin-top:12px;font-size:11px;line-height:1.8;color:#555;border:1px solid #e0e4f0}
+  .footer{margin-top:28px;font-size:10px;color:#aaa;line-height:1.8;border-top:1px solid #e0e4f0;padding-top:12px}
+  .stamp{text-align:right;font-size:10px;color:#aaa}
+</style></head><body>
+<h1>Autofinanzierungsübersicht</h1>
+<div class="sub">Ballonfinanzierung · Erstellt ${new Date().toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'})}</div>
+
+<div class="grid">
+  <div class="box"><div class="box-lbl">Fahrzeug</div><div class="box-val" style="font-size:14px;color:#1a2e1a">${brand}<br><span style="font-size:11px;color:#444">${mod}</span></div></div>
+  <div class="box"><div class="box-lbl">Bank / Zinssatz</div><div class="box-val">${bank?.name||'Manuell'}<br><span style="font-size:14px">${P(S.zins)}</span></div></div>
+  <div class="box"><div class="box-lbl">Kaufpreis</div><div class="box-val">${E(S.kp)}</div></div>
+  <div class="box"><div class="box-lbl">Anzahlung</div><div class="box-val" style="color:${S.az>0?'#15803d':'#aaa'}">${E(S.az)}</div></div>
+  <div class="box"><div class="box-lbl">Nettodarlehen</div><div class="box-val">${E(d.nd)}</div></div>
+  <div class="box"><div class="box-lbl">Laufzeit</div><div class="box-val">${S.lz} Monate</div></div>
+</div>
+
+<div class="sec">Finanzierungsstruktur</div>
+<div class="row"><span class="lbl">Monatsrate</span><span class="val">${E(Math.round(d.mr))}</span></div>
+<div class="row"><span class="lbl">Schlussrate (Monat ${S.lz})</span><span class="val" style="color:#b45309">${E(Math.round(d.sr))}</span></div>
+<div class="row"><span class="lbl">Gesamtzinsen (volle Laufzeit)</span><span class="val" style="color:#991b1b">${E(Math.max(0,d.gz))}</span></div>
+<div class="row"><span class="lbl">Zinsen Monat 1</span><span class="val">${E(d.z1)}</span></div>
+<div class="row"><span class="lbl">Tilgung Monat 1</span><span class="val">${E(d.t1)}</span></div>
+
+<div class="sec">Vorzeitiger Verkauf · Monat ${S.vn}</div>
+<div class="row"><span class="lbl">Verkaufspreis</span><span class="val" style="color:#166534">${E(d.vp)}</span></div>
+<div class="row"><span class="lbl">Restschuld bei Verkauf (Monat ${S.vn})</span><span class="val" style="color:#991b1b">${E(d.rs)}</span></div>
+<div class="row"><span class="lbl">Gezahlte Raten bis Verkauf</span><span class="val">${E(d.paid)}</span></div>
+<div class="row"><span class="lbl">Schlussrate entfällt bei Verkauf</span><span class="val" style="color:#15803d">− ${E(Math.round(d.sr))}</span></div>
+<div class="row"><span class="lbl">Netto-Kosten gesamt</span><span class="val" style="color:${profit?'#166534':'#991b1b'}">${E(d.paid+d.rs-d.vp)}</span></div>
+
+<div class="result" style="border-color:${profit?'#15803d':'#991b1b'};background:${profit?'#f0fdf4':'#fef2f2'}">
+  <div class="result-lbl" style="color:${profit?'#166534':'#991b1b'}">${profit?'✓  Du behältst vom Verkauf':'⚠  Du schuldest der Bank noch'}</div>
+  <div class="result-amt" style="color:${profit?'#15803d':'#991b1b'}">${E(Math.abs(d.diff))}</div>
+  <div style="font-size:12px;color:#666;margin-top:8px">${E(d.vp)} − ${E(d.rs)} = ${profit?'Gewinn':'Fehlbetrag'}</div>
+</div>
+
+<div class="formula">
+  <strong>Restschuld-Formel:</strong> RS(k) = PV·(1+r)ᵏ − Rate·[(1+r)ᵏ−1]/r<br>
+  PV = ${E(d.nd)} · r = ${(S.zins/12).toFixed(4).replace('.',',')} % Mon. · k = ${S.vn} · Rate = ${E(Math.round(d.mr))}
+</div>
+
+<div class="footer">
+  Zinsdaten: Capitalo / Deutsche Bundesbank April 2026 · Marktdurchschnitt ~5,9 % eff. p.a.<br>
+  Wertentwicklung: pkw.de / AutoScout24 / DAT Report 2019–2026 · Prognose ohne Gewähr<br>
+  Keine Finanz- oder Anlageberatung. Nur zur Information.
+</div>
+</body></html>`;
+
+  const w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>w.print(),400);
+}
+
+// ════════════════════════════════════════════════════
+//  WIRE UP
+// ════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  buildCarSelectors();
+
+  const wire=(id,fn)=>{
+    const el=document.getElementById(id);
+    el.addEventListener('input',e=>{fn(+e.target.value);render();});
+  };
+  wire('r-zins', v=>{S.zins=v;S.bankId='manuell';});
+  wire('r-kp',   v=>{S.kp=v;});
+  wire('r-az',   v=>{S.az=Math.min(v,S.kp*0.9);});
+  wire('r-lz',   v=>{S.lz=v;if(S.vn>v)S.vn=v;});
+  wire('r-mr',   v=>{if(S.mode==='rate')S.rate=v;});
+  wire('r-slr',  v=>{if(S.mode==='balloon')S.bal=v;});
+  wire('r-vn',   v=>{S.vn=v;});
+  wire('r-vp',   v=>{S.vp=v;S.sync=false;render();});
+
+  render();
+});
+</script>
+</body>
+</html>
